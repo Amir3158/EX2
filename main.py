@@ -51,28 +51,48 @@ class posTagger:
         return self.train_words_mle.get(word, "NN")
 
     def mle_error(self):
-        test_size = len(self.test_data)
-        correct_guess = 0
+        test_size = 0
+        unknown_correct = 0
         correct = 0
+        unknown_words = 0
+        known_words = 0
+        for sent in self.test_data:
+            for word in sent:
+                test_size += 1
+                if word[0] not in self.train_words_mle:
+                    unknown_words += 1
+                    if word[1] == "NN":
+                        unknown_correct += 1
 
-        for sentence in self.test_data:
-            for word in sentence:
-                if word[0] not in self.train_words_mle and word[1] == "NN":
-                    correct_guess += 1
+                elif word[0] in self.train_words_mle:
+                    known_words += 1
+                    if word[1] == self.train_words_mle[word[0]]:
+                        correct += 1
 
-                elif word[0] in self.train_words_mle and word[1] == self.get_mle(word):
-                    correct += 1
-
-        accuracy = (correct + correct_guess) / test_size
+        accuracy = (correct + unknown_correct) / test_size
+        unknown_acc = unknown_correct / unknown_words
+        known_acc = correct / known_words
+        print(f"Overall error: {1 - accuracy}\n"
+              f"Unknown error: {1 - unknown_acc}\n"
+              f"Known error: {1 - known_acc}")
         return 1 - accuracy
 
 
 def split_train_test():
     sents = brown.tagged_sents(categories="news")
-    return train_test_split(sents, test_size=0.1, random_state=False)
+    train,test = train_test_split(sents, test_size=0.1, random_state=False)
+
+    # temp = set()
+    # for sent in test:
+    #     for tup in sent:
+    #         temp.add(tuple([tup[0], tup[1]]))
+    # test = list(temp)
+    return train, test
+
 
 
 if __name__ == '__main__':
     train, test = split_train_test()
     p = posTagger(train, test)
 
+    p.mle_error()
