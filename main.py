@@ -2,17 +2,22 @@ from nltk.corpus import brown
 from sklearn.model_selection import train_test_split
 import nltk
 import json
+import re
 
 nltk.download('brown')
+
+FILTER_COMPLEX_TAG = re.compile(r"[^*+\-]*")
 
 
 class posTagger:
 
     def __init__(self, training, test, file=None):
-        self.training_data = training
-        self.test_data = test
         self.train_words_tags = self.get_word_tags(training)
+        self.test_words_tags = self.get_word_tags(test)
         self.train_words_mle = self.get_mle(self.train_words_tags) if file is None else self.get_mle_from_json(file)
+
+    def filter_tag(self, tag):
+        return FILTER_COMPLEX_TAG.match(tag).group(0)
 
     def get_word_tags(self, data):
         """
@@ -23,14 +28,15 @@ class posTagger:
         words_tag = dict()
         for sent in data:
             for word in sent:
+                w_tag = self.filter_tag(word[1])
                 if word[0] in words_tag:
-                    if word[1] in words_tag[word[0]]:
-                        words_tag[word[0]][word[1]] += 1
+                    if w_tag in words_tag[word[0]]:
+                        words_tag[word[0]][w_tag] += 1
                     else:
-                        words_tag[word[0]][word[1]] = 1
+                        words_tag[word[0]][w_tag] = 1
                 else:
                     words_tag[word[0]] = dict()
-                    words_tag[word[0]][word[1]] = 1
+                    words_tag[word[0]][w_tag] = 1
         return words_tag
 
     def get_mle(self, data):
@@ -56,18 +62,18 @@ class posTagger:
         correct = 0
         unknown_words = 0
         known_words = 0
-        for sent in self.test_data:
-            for word in sent:
-                test_size += 1
-                if word[0] not in self.train_words_mle:
-                    unknown_words += 1
-                    if word[1] == "NN":
-                        unknown_correct += 1
+        for word, tags in self.test_words_tags.items():
+            for tag, count in tags.items():
+                test_size += count
+                if word not in self.train_words_mle:
+                    unknown_words += count
+                    if tag == self.predict_mle(word):
+                        unknown_correct += count
 
-                elif word[0] in self.train_words_mle:
-                    known_words += 1
-                    if word[1] == self.train_words_mle[word[0]]:
-                        correct += 1
+                elif word in self.train_words_mle:
+                    known_words += count
+                    if tag == self.predict_mle(word):
+                        correct += count
 
         accuracy = (correct + unknown_correct) / test_size
         unknown_acc = unknown_correct / unknown_words
@@ -79,14 +85,10 @@ class posTagger:
 
 
 def split_train_test():
-    sents = brown.tagged_sents(categories="news")
-    train,test = train_test_split(sents, test_size=0.1, random_state=False)
-
-    # temp = set()
-    # for sent in test:
-    #     for tup in sent:
-    #         temp.add(tuple([tup[0], tup[1]]))
-    # test = list(temp)
+    sents = list(brown.tagged_sents(categories="news"))
+    split_size = (len(sents) // 10) + 1
+    train = sents[:-split_size]
+    test = sents[-split_size:]
     return train, test
 
 
