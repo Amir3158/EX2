@@ -1,6 +1,6 @@
 import numpy as np
 from nltk.corpus import brown
-from sklearn.model_selection import train_test_split
+from operator import itemgetter
 import nltk
 import json
 import re
@@ -47,7 +47,7 @@ class Bigram_HMM:
         return count_tag1_tag2 / sum(self.train_transition[tag1].values())
 
     def calc_emission(self, t, w):
-        c = self.pos_tagger.get_words_tag_count(w,t)  # amount of occurrences the word w is tagged to t
+        c = self.pos_tagger.get_words_tag_count(w, t)  # amount of occurrences the word w is tagged to t
         if c == -1:
             return -1
         return c / sum(self.train_transition[t].values())
@@ -55,44 +55,44 @@ class Bigram_HMM:
     def calc_prev_max_tag(self, all_tags, matrix, i, tag):
         max_prob = 0
         index = 0
-        selected_tag = all_tags[0]
         for j, u in enumerate(all_tags):
             p = matrix[i][j][0] * self.calc_transition(u, tag)
             if p > max_prob:
                 max_prob = p
-                selected_tag = u
                 index = j
-        list_of_tags = matrix[i][index][1]
-        list_of_tags.append(selected_tag)
+        list_of_tags = matrix[i][index][1].copy()
+        list_of_tags.append(tag)
         return max_prob, list_of_tags
 
     def calc_Viterbi(self, sent):
-        k = len(sent)
+        k = len(sent) + 1
         num_of_tags = len(self.train_transition)
         all_tags = list(self.train_transition.keys())
-        all_tags.remove("START")
         viterbi_matrix = []
         text = ['']
         text.extend(sent)
         for i, w in enumerate(text):
-            if i == 0:
-                viterbi_matrix.append([(1.0, ["START"])] * num_of_tags)
-                continue
             viterbi_matrix.append([(0, [])] * num_of_tags)
-            if not self.pos_tagger.check_known_word(w):  # unknown word
-                p, tags = self.calc_prev_max_tag(all_tags, viterbi_matrix, i - 1, all_tags[0])
-                viterbi_matrix[i][0] = (p, tags)
+            if i > 0 and not self.pos_tagger.check_known_word(w):  # unknown word
+                p, tags = self.calc_prev_max_tag(all_tags, viterbi_matrix, i - 1, "NN")
+                viterbi_matrix[i][1] = (p, tags)
             else:  # known word
                 for j, t in enumerate(all_tags):
+                    if i == 0:
+                        if t == "START":
+                            viterbi_matrix[i][j] = (1.0, ["START"])
+                        continue
                     e = self.calc_emission(t, w)
-                    p, tags = self.calc_prev_max_tag(all_tags, viterbi_matrix, i, t)
+                    if e == 0: continue
+                    p, tags = self.calc_prev_max_tag(all_tags, viterbi_matrix, i - 1, t)
                     viterbi_matrix[i][j] = (e * p, tags)
             if sum([g[0] for g in viterbi_matrix[i]]) == 0:
-                tags = viterbi_matrix[i][0][1]
-                tags.extend([all_tags[0] * (k-i)])
-                return 0, tags
+                tags = max(viterbi_matrix[i - 1], key=itemgetter(0))[1]
+                tags.extend(["NN"] * (k - i))
+                return tags[1:]
+        predicted_tags = max(viterbi_matrix[k - 1], key=lambda item: item[0])
         print(1)
-        return max(viterbi_matrix[k], key=lambda item: item[0])
+        return predicted_tags[1][1:]
 
     def viterbi_error(self, data):
         test_size = 0
@@ -103,11 +103,11 @@ class Bigram_HMM:
         for sentence in data:
             sent, tags = [list(i) for i in zip(*sentence)]
             tags = [filter_tag(t) for t in tags]
-            predicted_tags = self.calc_Viterbi(sent)[1]
+            predicted_tags = self.calc_Viterbi(sent)
             for i, word in enumerate(sent):
                 if not self.pos_tagger.check_known_word(word):
                     unknown_words += 1
-                    if tags[i] == predicted_tags[i]: #correct guess for unknown word
+                    if tags[i] == predicted_tags[i]:  # correct guess for unknown word
                         unknown_correct += 1
                 else:
                     known_words += 1
@@ -118,11 +118,9 @@ class Bigram_HMM:
         unknown_accuracy = unknown_correct / unknown_words
         known_accuracy = correct / known_words
         print(f"Overall error: {1 - accuracy}\n"
-              f"Unknown words error: {1 - unknown_accuracy}"
+              f"Unknown words error: {1 - unknown_accuracy}\n"
               f"Known words error: {1 - known_accuracy}")
         return 1 - accuracy
-
-
 
 
 class posTagger:
@@ -212,10 +210,12 @@ def B():
     p = posTagger(train, test)
     p.mle_error()
 
+
 def C():
     train, test = split_train_test()
     hmm = Bigram_HMM(train, test)
     hmm.viterbi_error(test)
+
 
 
 
