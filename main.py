@@ -410,10 +410,14 @@ def E(train, test):
     pt = pseudoTagger(train, test)
     pt.getPseudoDataTrain()
     pt.getPseudoDataTest()
-    # pt.retrainWithPseudo()
-    # pt.bigHMM.viterbi_error(pt.pseudoTestData, pt.testData)
-    pt.retrainWithPseudo(True)
-    pt.bigHMM.viterbi_error(pt.pseudoTestData, pt.testData)
+    # pt.retrainWithPseudo()                                         #ei
+    # pt.bigHMM.viterbi_error(pt.pseudoTestData, pt.testData)        #ei
+
+
+    pt.retrainWithPseudo(True)                                 #eii
+    pt.bigHMM.viterbi_error(pt.pseudoTestData, pt.testData)    #eii
+
+
 
 if __name__ == '__main__':
     train, test = split_train_test()
