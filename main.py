@@ -1,10 +1,12 @@
 import numpy as np
 import regex
+from matplotlib import pyplot as plt
 from nltk.corpus import brown
 from operator import itemgetter
 import nltk
 import json
 import re
+from sklearn.metrics import confusion_matrix
 
 NUMER_REGEX = r"\d+"
 
@@ -143,21 +145,27 @@ class Bigram_HMM:
         predicted_tags = max(viterbi_matrix[k - 1], key=lambda item: item[0])
         return predicted_tags[1][1:]
 
-    def viterbi_error(self, data, realData = None):
+    def viterbi_error(self, data, realData = None, cofused=False):
         test_size = 0
         correct = 0
         unknown_correct = 0
         unknown_words = 0
         known_words = 0
+        realTags = []
+        predTags = []
         for j, sentence in enumerate(data):
             sent, tags = [list(i) for i in zip(*sentence)]
             tags = [filter_tag(t) for t in tags]
-            predicted_tags = self.calc_Viterbi(sent)
-            for i, word in enumerate(sent):
+            realTags.extend(tags)
 
+            predicted_tags = self.calc_Viterbi(sent)
+            predTags.extend(predicted_tags)
+
+            for i, word in enumerate(sent):
                 if realData:  #case of pseudo words - we need to check if a word is unknown or not with the real data instead of pseudo data
                     if not (self.check_known_word(realData[j][i][0])):
                         unknown_words += 1
+
                         if tags[i] == predicted_tags[i]:  # correct guess for unknown word
                             unknown_correct += 1
                     else:
@@ -180,7 +188,10 @@ class Bigram_HMM:
         print(f"Overall error: {1 - accuracy}\n"
               f"Unknown words error: {1 - unknown_accuracy}\n"
               f"Known words error: {1 - known_accuracy}")
-        return 1 - accuracy
+        error = 1-accuracy
+        if cofused:
+            return confusion_matrix(realTags, predTags)
+        return error
 
 
 class posTagger:
@@ -413,9 +424,16 @@ def E(train, test):
     # pt.retrainWithPseudo()                                         #ei
     # pt.bigHMM.viterbi_error(pt.pseudoTestData, pt.testData)        #ei
 
+    #
+    # pt.retrainWithPseudo(True)                                 #eii
+    # pt.bigHMM.viterbi_error(pt.pseudoTestData, pt.testData)    #eii
 
-    pt.retrainWithPseudo(True)                                 #eii
-    pt.bigHMM.viterbi_error(pt.pseudoTestData, pt.testData)    #eii
+    pt.retrainWithPseudo(True)
+    conf = pt.bigHMM.viterbi_error(pt.pseudoTestData, pt.testData, True)    #eiii
+    plt.matshow(conf)
+    plt.show()
+
+
 
 
 
