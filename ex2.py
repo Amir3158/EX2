@@ -1,5 +1,3 @@
-import numpy as np
-import regex
 from matplotlib import pyplot as plt
 from nltk.corpus import brown
 from operator import itemgetter
@@ -421,22 +419,16 @@ def E(train, test):
     pt = pseudoTagger(train, test)
     pt.getPseudoDataTrain()
     pt.getPseudoDataTest()
-    # pt.retrainWithPseudo()                                         #ei
-    # pt.bigHMM.viterbi_error(pt.pseudoTestData, pt.testData)        #ei
 
-    #
-    # pt.retrainWithPseudo(True)                                 #eii
-    # pt.bigHMM.viterbi_error(pt.pseudoTestData, pt.testData)    #eii
+    pt.retrainWithPseudo()                                         #ei
+    pt.bigHMM.viterbi_error(pt.pseudoTestData, pt.testData)        #ei
+
+
+    pt.retrainWithPseudo(True)                                 #eii
+    pt.bigHMM.viterbi_error(pt.pseudoTestData, pt.testData)    #eii
 
     pt.retrainWithPseudo(True)
     conf = pt.bigHMM.viterbi_error(pt.pseudoTestData, pt.testData, True)    #eiii
     plt.matshow(conf)
     plt.show()
 
-
-
-
-
-if __name__ == '__main__':
-    train, test = split_train_test()
-    E(train, test)
