@@ -41,7 +41,7 @@ class Bigram_HMM:
         self.train_transition = self.init_transition(training)
         self.all_w = self.known_words.copy()
         self.smoothing = smoothing
-        self.posTagger = posTagger(train, test)
+        self.posTagger = posTagger(training, test)
 
         if self.smoothing:
             self.add_test(test)
@@ -60,6 +60,7 @@ class Bigram_HMM:
             inner = transition.setdefault(last_tag, dict())
             inner["STOP"] = inner.get("STOP", 0) + 1
         return transition
+
 
     def init_emission(self, data):
         words_tag = dict()
@@ -209,9 +210,6 @@ class posTagger:
 
     def check_known_word(self, word):
         return word in self.train_words_tags
-        # if word not in self.train_words_tags:
-        #     return False
-        # return True
 
     def init_word_tags(self, data):
         """
@@ -285,10 +283,8 @@ class pseudoTagger:
         self.testData = test
         self.pseudoTrainingData = []
         self.numOfUnknown = 0
-        # self.pseudoDict = dict()
         self.pseudoWords = set()
         self.pseudoTestData = []
-        # self.pseudoDict =
 
 
     def get_word_count(self, word):
@@ -361,7 +357,6 @@ class pseudoTagger:
             pseudoData.append(pseudoSent)  # add sentence with pseudo words
 
         self.pseudoTrainingData = pseudoData
-        # self.pseudoDict = pseudoDict
 
 
     def getPseudoDataTest(self):
